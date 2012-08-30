@@ -35,7 +35,8 @@ _ = gettext.gettext
 
 
 def main(options, log):
-    if os.path.exists("/etc/pki/rhic/rhic.pem"):
+    rhic_location = "/etc/pki/rhic/rhic.pem"
+    if os.path.exists(rhic_location):
         print ("RHIC UPDATE")
         splice_conn = connection.SpliceConnection()
         entitlement_dir = EntitlementDirectory()
@@ -53,19 +54,17 @@ def main(options, log):
             product_certs.append(product[1])
 
         # read the rhic, for sending up in json
-        rhic = certificate.RHICertificate()
-        #rhic.read(cfg.get('splice', 'rhic'))
-        rhic.read("/etc/pki/rhic/rhic.pem")
+        rhic = certificate.create_from_file(rhic_location)
 
         mac = facts.to_dict()['net.interface.eth0.mac_address']
 
         params = {}
-        params['identity_cert'] = rhic.toPEM()
+        params['identity_cert'] = rhic.x509.as_pem()
         params['consumer_identifier'] = mac
         params['products'] = product_certs
         params['system_facts'] = facts.to_dict()
 
-        response = splice_conn.conn.request_put("/api/v1/entitlement/%s/" % rhic.subj['commonName'], params)
+        response = splice_conn.conn.request_put("/api/v1/entitlement/%s/" % rhic.subject['CN'], params)
         print response
 
         cert = response['certs'][0][0]
