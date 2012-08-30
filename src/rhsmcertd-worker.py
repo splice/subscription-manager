@@ -58,26 +58,14 @@ def main(options, log):
 
         mac = facts.to_dict()['net.interface.eth0.mac_address']
 
-        params = {}
-        params['identity_cert'] = rhic.x509.as_pem()
-        params['consumer_identifier'] = mac
-        params['products'] = product_certs
-        params['system_facts'] = facts.to_dict()
-
-        response = splice_conn.conn.request_put("/api/v1/entitlement/%s/" % rhic.subject['CN'], params)
-        print response
-
-        cert = response['certs'][0][0]
-        key = response['certs'][0][1]
-        serial = response['certs'][0][2]
-
+        certs = splice_conn.getCerts(rhic, mac, installed_products=product_certs, facts=facts)
         
         try:
-            cert_fd = open("/etc/pki/entitlement/%s.pem" % serial, "wb")
-            cert_fd.write(cert)
+            cert_fd = open("/etc/pki/entitlement/%s.pem" % certs['serial'], "wb")
+            cert_fd.write(certs['cert'])
             cert_fd.close()
-            key_fd = open("/etc/pki/entitlement/%s-key.pem" % serial, "wb")
-            key_fd.write(key)
+            key_fd = open("/etc/pki/entitlement/%s-key.pem" % certs['serial'], "wb")
+            key_fd.write(certs['key'])
             key_fd.close()
         except:
             raise
