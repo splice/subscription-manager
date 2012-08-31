@@ -63,6 +63,18 @@ class ClassicCheck:
 
         return up2dateAuth.getSystemId() is not None
 
+class RhicCheck:
+    def hasRhic(self):
+        try:
+            # TODO: this should not be hardcoded
+            rhic_location = "/etc/pki/rhic/rhic.pem"
+            if os.path.exists(rhic_location):
+                return True
+
+            return False
+        except:
+            log.warn(_("Error reading RHIC: %s"), e)
+
 
 class DmiInfo(object):
 

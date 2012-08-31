@@ -28,6 +28,7 @@ from subscription_manager import managerlib
 from subscription_manager.certlib import ConsumerIdentity
 from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
+from subscription_manager.hwprobe import RhicCheck
 from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory
 
 import gettext
@@ -35,9 +36,7 @@ _ = gettext.gettext
 
 
 def main(options, log):
-    rhic_location = "/etc/pki/rhic/rhic.pem"
-    if os.path.exists(rhic_location):
-        print ("RHIC UPDATE")
+    if RhicCheck().hasRhic():
         splice_conn = connection.SpliceConnection()
         entitlement_dir = EntitlementDirectory()
         product_dir = ProductDirectory()
@@ -54,12 +53,15 @@ def main(options, log):
             product_certs.append(product[1])
 
         # read the rhic, for sending up in json
+        rhic_location = "/etc/pki/rhic/rhic.pem"
         rhic = certificate.create_from_file(rhic_location)
 
         mac = facts.to_dict()['net.interface.eth0.mac_address']
 
         certs = splice_conn.getCerts(rhic, mac, installed_products=product_certs, facts=facts)
-        
+      
+
+        # TODO: clear out expired certs here 
         try:
             cert_fd = open("/etc/pki/entitlement/%s.pem" % certs['serial'], "wb")
             cert_fd.write(certs['cert'])
