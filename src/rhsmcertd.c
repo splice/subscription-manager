@@ -35,7 +35,8 @@
 #define UPDATEFILE "/var/run/rhsm/update"
 #define WORKER "/usr/libexec/rhsmcertd-worker"
 #define WORKER_NAME WORKER
-#define INITIAL_DELAY_SECONDS 120;
+// TEMP CHANGE TO MAKE DEMO BETTER
+#define INITIAL_DELAY_SECONDS 1;
 #define DEFAULT_CERT_INTERVAL_SECONDS 14400	/* 4 hours */
 #define DEFAULT_HEAL_INTERVAL_SECONDS 86400	/* 24 hours */
 #define BUF_MAX 256
