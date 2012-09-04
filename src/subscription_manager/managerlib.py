@@ -753,7 +753,7 @@ def parseDate(date):
 
 def formatDate(dt):
     if dt:
-        return dt.astimezone(LocalTz()).strftime("%x")
+        return dt.astimezone(LocalTz()).strftime("%x %X")
     else:
         return ""
 
