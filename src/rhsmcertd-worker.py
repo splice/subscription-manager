@@ -30,6 +30,8 @@ from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
 from subscription_manager.hwprobe import RhicCheck
 from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory
+from subscription_manager import cert_sorter
+
 
 import gettext
 _ = gettext.gettext
@@ -61,7 +63,6 @@ def main(options, log):
         certs = splice_conn.getCerts(rhic, mac, installed_products=product_certs, facts=facts)
       
 
-        # TODO: clear out expired certs here 
         try:
             cert_fd = open("/etc/pki/entitlement/%s.pem" % certs['serial'], "wb")
             cert_fd.write(certs['cert'])
@@ -71,6 +72,15 @@ def main(options, log):
             key_fd.close()
         except:
             raise
+
+        # clean up expired certs
+        cs = cert_sorter.CertSorter(product_dir, entitlement_dir, facts.to_dict())
+        log.info("deleting %s expired certs" % len(cs.expired_entitlement_certs))
+
+        for cert in cs.expired_entitlement_certs:
+            log.info("deleting expired cert %s" % cert.serial)
+            cert.delete()
+
         sys.exit(1)
 
     if not ConsumerIdentity.existsAndValid():
