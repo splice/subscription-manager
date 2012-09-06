@@ -158,6 +158,21 @@ class CertificateDirectory(Directory):
                     return c
         return None
 
+class RhicDirectory(CertificateDirectory):
+
+    RHIC = cfg.get('splice', 'rhic')
+
+    def __init__(self):
+        CertificateDirectory.__init__(self, self.PATH)
+
+    def get_rhic(self):
+        """
+        Returns the rhic itself, instead of a one-element list
+        """
+        if os.path.exists(RHIC):
+            return RHIC
+        else:
+            raise IOError(_("RHIC not found at %s") % RHIC)
 
 class ProductDirectory(CertificateDirectory):
 

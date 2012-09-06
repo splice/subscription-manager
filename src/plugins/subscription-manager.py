@@ -61,7 +61,7 @@ def update(conduit):
     key_file = ConsumerIdentity.keypath()
 
     # if we have a RHIC, it's ok to call RepoLib without a ConsumerId or UEP
-    if os.path.exists('/etc/pki/rhic/rhic.pem'):
+    if RhicCheck().hasRhic():
         rl = RepoLib()
         rl.update()
         return

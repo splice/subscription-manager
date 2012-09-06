@@ -394,6 +394,7 @@ main (int argc, char *argv[])
 	int cert_interval_seconds = config->cert_interval_seconds;
 	int heal_interval_seconds = config->heal_interval_seconds;
 	free (config);
+    info("healing seconds: %d", heal_interval_seconds);
 
 	daemon (0, 0);
 	if (get_lock () != 0) {
