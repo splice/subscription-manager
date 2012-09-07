@@ -21,8 +21,9 @@ from yum.plugins import TYPE_CORE, TYPE_INTERACTIVE
 
 sys.path.append('/usr/share/rhsm')
 from subscription_manager import logutil
-from subscription_manager.hwprobe import ClassicCheck, RhicCheck
+from subscription_manager.hwprobe import ClassicCheck
 from subscription_manager.repolib import RepoLib, EntitlementDirectory
+from subscription_manager.certdirectory import RhicDirectory
 from rhsm import connection
 
 requires_api_version = '2.5'
@@ -61,7 +62,7 @@ def update(conduit):
     key_file = ConsumerIdentity.keypath()
 
     # if we have a RHIC, it's ok to call RepoLib without a ConsumerId or UEP
-    if os.path.exists('/etc/pki/rhic/rhic.pem'):
+    if RhicDirectory().getRhic():
         rl = RepoLib()
         rl.update()
         return
@@ -130,7 +131,7 @@ def config_hook(conduit):
     logutil.init_logger_for_yum()
     try:
         update(conduit)
-        if not ClassicCheck().is_registered_with_classic() and not RhicCheck().hasRhic():
+        if not ClassicCheck().is_registered_with_classic() and not RhicDirectory().getRhic():
                 warnOrGiveUsageMessage(conduit)
                 warnExpired(conduit)
     except Exception, e:
