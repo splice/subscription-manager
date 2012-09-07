@@ -163,7 +163,7 @@ class RhicDirectory(CertificateDirectory):
     RHIC = cfg.get('splice', 'rhic')
 
     def __init__(self):
-        CertificateDirectory.__init__(self, self.RHIC)
+        CertificateDirectory.__init__(self, os.path.dirname(self.RHIC))
 
     def getRhic(self):
         """

@@ -25,6 +25,7 @@ import dbus
 import datetime
 from time import strftime, strptime, localtime
 import urlparse
+import shutil
 from M2Crypto import X509
 from M2Crypto import SSL
 
@@ -47,7 +48,7 @@ from subscription_manager import managerlib
 from subscription_manager.facts import Facts
 from subscription_manager.quantity import valid_quantity
 from subscription_manager.release import ReleaseBackend
-from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory
+from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, RhicDirectory
 from subscription_manager.cert_sorter import FUTURE_SUBSCRIBED, SUBSCRIBED, \
         NOT_SUBSCRIBED, EXPIRED, PARTIALLY_SUBSCRIBED
 from subscription_manager.utils import remove_scheme, parse_server_info, \
@@ -843,8 +844,7 @@ class RegisterCommand(UserPassCommand):
         super(RegisterCommand, self).__init__("register", shortdesc, True,
                                               ent_dir, prod_dir)
 
-        self.parser.add_option("--rhic", dest="rhic", action='store_true',
-                               help=_("Register using a RHIC"))
+        self.parser.add_option("--rhic", dest="rhic", help=_("Register using a RHIC"))
         self.parser.add_option("--type", dest="consumertype", default="system",
                                help=_("the type of consumer to register, defaults to system"))
         self.parser.add_option("--name", dest="consumername",
@@ -927,32 +927,17 @@ class RegisterCommand(UserPassCommand):
         # if we are registering with a RHIC, do that here
         # TODO:  command-line config overrides
         if self.options.rhic:
-            splice_conn = connection.SpliceConnection()
+            # ensure new rhic is readable
+            if os.access(self.options.rhic, os.R_OK):
+                log.info("removing existing files from %s" % os.path.dirname(RhicDirectory().getRhic()))
+                RhicDirectory().clean()
+                log.info("copying %s into %s" % (self.options.rhic, cfg.get('splice', 'rhic')
+                shutil.copy(self.options.rhic, cfg.get('splice', 'rhic'))
+                print(_("RHIC %s successfully imported") % self.options.rhic)
+            else:
+                print(_("RHIC location %s is not readable") % self.options.rhic)
 
-            self.facts = Facts(ent_dir=self.entitlement_dir,
-                                  prod_dir=self.product_dir)
-
-            iproducts = managerlib.getInstalledProductStatus(self.product_dir,
-                    self.entitlement_dir, self.facts.get_facts())
-
-            product_certs = []
-
-            for product in iproducts:
-                product_certs.append(product[1])
-
-            # read the rhic, for sending up in json
-            rhic = certificate.RHICertificate()
-            rhic.read(cfg.get('splice', 'rhic'))
-
-            mac = self.facts.to_dict()['net.interface.eth0.mac_address']
-
-            params = {}
-            params['identity_cert'] = rhic.toPEM()
-            params['consumer_identifier'] = mac
-            params['products'] = product_certs
-            params['facts'] = self.facts.to_dict()
-
-            splice_conn.conn.request_put("/api/v1/entitlement/%s/" % rhic.subj['commonName'], params)
+            # call rhsmcertd-worker here
             sys.exit(1)
 
 
