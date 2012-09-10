@@ -36,7 +36,6 @@ _ = gettext.gettext
 
 import rhsm.config
 import rhsm.connection as connection
-import rhsm.certificate as certificate
 
 from subscription_manager.branding import get_branding
 from subscription_manager.certlib import CertLib, ConsumerIdentity
@@ -947,7 +946,6 @@ class RegisterCommand(UserPassCommand):
                 print(_("RHIC location %s is not readable") % self.options.rhic)
 
             sys.exit(retcode)
-
 
         # Proceed with new registration:
         try:

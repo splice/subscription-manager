@@ -18,7 +18,6 @@ import sys
 sys.path.append("/usr/share/rhsm")
 
 import logging
-import os
 
 from rhsm import connection
 from rhsm import certificate
@@ -79,7 +78,6 @@ def main(options, log):
                   ' are corrupted. Certificate update using daemon failed.')
         sys.exit(-1)
     print _('Updating entitlement certificates & repositories')
-
 
     try:
         uep = connection.UEPConnection(cert_file=ConsumerIdentity.certpath(),

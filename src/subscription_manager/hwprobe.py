@@ -63,6 +63,7 @@ class ClassicCheck:
 
         return up2dateAuth.getSystemId() is not None
 
+
 class DmiInfo(object):
 
     def __init__(self):

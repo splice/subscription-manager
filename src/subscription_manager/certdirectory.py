@@ -158,6 +158,7 @@ class CertificateDirectory(Directory):
                     return c
         return None
 
+
 class RhicDirectory(CertificateDirectory):
 
     RHIC = cfg.get('splice', 'rhic')
@@ -173,6 +174,7 @@ class RhicDirectory(CertificateDirectory):
             return self.RHIC
         else:
             return None
+
 
 class ProductDirectory(CertificateDirectory):
 
