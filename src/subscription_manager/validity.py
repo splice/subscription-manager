@@ -140,10 +140,6 @@ class ValidProductDateRangeCalculator(object):
                                                                  ent_start)
             ent_valid_on_end = self._entitlement_valid_on_date(ent, possible_ents, ent_end)
 
-            # set the start date if not already set
-            if not start_date and ent_valid_on_start:
-                start_date = ent_start
-
             # Determine if after the last processed entitlement's end date,
             # the product is still valid. If we are not valid after the last,
             # and there are other entitlements to process, this can not be
@@ -278,9 +274,5 @@ class ValidProductDateRangeCalculator(object):
         # the system, we're not valid, dates are irrelevant:
         elif not self.sorter.ent_cert_sockets_valid(entitlement):
             return False
-       
-        valid = False 
-        for e in entitlements_to_check:
-            valid = valid or e.valid_range.has_date(date)      
 
-        return valid
+        return entitlement.valid_range.has_date(date)
