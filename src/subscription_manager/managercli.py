@@ -16,10 +16,10 @@
 #
 
 import os
-import pprint
 import sys
 import logging
 import socket
+import subprocess
 import getpass
 import dbus
 import datetime
@@ -60,6 +60,7 @@ cfg = rhsm.config.initConfig()
 
 NOT_REGISTERED = _("This system is not yet registered. Try 'subscription-manager register --help' for more information.")
 LIBRARY_ENV_NAME = "library"
+RHSMCERTD_WORKER = "/usr/libexec/rhsmcertd-worker"
 
 # Translates the cert sorter status constants:
 STATUS_MAP = {
@@ -927,18 +928,25 @@ class RegisterCommand(UserPassCommand):
         # if we are registering with a RHIC, do that here
         # TODO:  command-line config overrides
         if self.options.rhic:
+            retcode = 1
             # ensure new rhic is readable
             if os.access(self.options.rhic, os.R_OK):
                 log.info("removing existing files from %s" % os.path.dirname(RhicDirectory().getRhic()))
                 RhicDirectory().clean()
-                log.info("copying %s into %s" % (self.options.rhic, cfg.get('splice', 'rhic')
+                log.info("copying %s into %s" % (self.options.rhic, cfg.get('splice', 'rhic')))
                 shutil.copy(self.options.rhic, cfg.get('splice', 'rhic'))
                 print(_("RHIC %s successfully imported") % self.options.rhic)
+                try:
+                    retcode = subprocess.call([RHSMCERTD_WORKER])
+                except:
+                    print "Exception when calling rhsmcertd-worker. See /var/log/rhsm/rhsm.log for more detail."
+                    log.exception(e)
+                if retcode != 0:
+                    log.info("Non-zero return code from rhsmcertd-worker. See /var/log/rhsm/rhsm.log for more detail.")
             else:
                 print(_("RHIC location %s is not readable") % self.options.rhic)
 
-            # call rhsmcertd-worker here
-            sys.exit(1)
+            sys.exit(retcode)
 
 
         # Proceed with new registration:

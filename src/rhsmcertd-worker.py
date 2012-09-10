@@ -28,7 +28,7 @@ from subscription_manager import managerlib
 from subscription_manager.certlib import ConsumerIdentity
 from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
-from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, RhicDirectory
+from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, RhicDirectory, Writer
 from subscription_manager import cert_sorter
 
 
@@ -41,33 +41,26 @@ def main(options, log):
         splice_conn = connection.SpliceConnection()
         entitlement_dir = EntitlementDirectory()
         product_dir = ProductDirectory()
-
         facts = Facts(ent_dir=entitlement_dir,
                               prod_dir=product_dir)
-
         iproducts = managerlib.getInstalledProductStatus(product_dir,
                 entitlement_dir, facts.get_facts())
-
         product_certs = []
 
         for product in iproducts:
             product_certs.append(product[1])
 
-        # read the rhic, for sending up in json
         rhic = certificate.create_from_file(RhicDirectory().getRhic())
-
         mac = facts.to_dict()['net.interface.eth0.mac_address']
 
+        # grab the certs from RCS
         certs = splice_conn.getCerts(rhic, mac, installed_products=product_certs, facts=facts)
-      
 
         try:
-            cert_fd = open("/etc/pki/entitlement/%s.pem" % certs['serial'], "wb")
-            cert_fd.write(certs['cert'])
-            cert_fd.close()
-            key_fd = open("/etc/pki/entitlement/%s-key.pem" % certs['serial'], "wb")
-            key_fd.write(certs['key'])
-            key_fd.close()
+            writer = Writer()
+            cert = certificate.create_from_pem(certs['cert'])
+            key = certificate.Key(certs['key'])
+            writer.write(key, cert)
         except:
             raise
 
@@ -79,7 +72,7 @@ def main(options, log):
             log.info("deleting expired cert %s" % cert.serial)
             cert.delete()
 
-        sys.exit(1)
+        sys.exit(0)
 
     if not ConsumerIdentity.existsAndValid():
         log.error('Either the consumer is not registered or the certificates' +
