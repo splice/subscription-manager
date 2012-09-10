@@ -112,9 +112,3 @@ class TestEntitlementDirectoryCheckKey(unittest.TestCase):
         ent_cert = StubEntitlementCertificate(product)
         ret = ent_dir._check_key(ent_cert)
         self.assertFalse(ret)
-
-class TestRhicDirectoryGetRhic(unittest.TestCase):
-    @patch('os.path.exists')
-    @patch('os.access')
-    def test_get_rhic(self, MockAccess, MockExists):
-        rhic = RhicDirectory().get_rhic()
