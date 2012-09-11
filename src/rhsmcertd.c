@@ -70,6 +70,10 @@ typedef struct _Config {
 	int cert_interval_seconds;
 } Config;
 
+typedef struct _cert_check_args {
+	bool heal;
+} cert_check_args;
+
 const char *
 timestamp ()
 {
@@ -143,7 +147,8 @@ log_update (int delay)
 
 /* Handle program signals */
 void
-signal_handler(int signo) {
+signal_handler (int signo)
+{
 	if (signo == SIGTERM) {
 		info ("rhsmcertd is shutting down...");
 		signal (signo, SIG_DFL);
@@ -166,7 +171,7 @@ get_lock ()
 }
 
 static gboolean
-cert_check (gboolean heal)
+cert_check (cert_check_args * args)
 {
 	int status = 0;
 
@@ -176,7 +181,7 @@ cert_check (gboolean heal)
 		exit (EXIT_FAILURE);
 	}
 	if (pid == 0) {
-		if (heal) {
+		if (args->heal) {
 			execl (WORKER, WORKER_NAME, "--autoheal", NULL);
 		} else {
 			execl (WORKER, WORKER_NAME, NULL);
@@ -187,7 +192,7 @@ cert_check (gboolean heal)
 	status = WEXITSTATUS (status);
 
 	char *action = "Cert Check";
-	if (heal) {
+	if (args->heal) {
 		action = "Healing";
 	}
 
@@ -202,9 +207,9 @@ cert_check (gboolean heal)
 }
 
 static gboolean
-initial_cert_check (gboolean heal)
+initial_cert_check (cert_check_args * args)
 {
-	cert_check (heal);
+	cert_check (args);
 	// Return false so that the timer does
 	// not run this again.
 	return false;
@@ -250,8 +255,8 @@ print_argument_error (const char *message, ...)
 	va_list argp;
 
 	va_start (argp, message);
-	vprintf(message, argp);
-	printf(N_("For more information run: rhsmcertd --help\n"));
+	vprintf (message, argp);
+	printf (N_("For more information run: rhsmcertd --help\n"));
 }
 
 void
@@ -266,7 +271,7 @@ key_file_init_config (Config * config, GKeyFile * key_file)
 
 	int heal_frequency = get_int_from_config_file (key_file, "rhsmcertd",
 						       "healFrequency");
-	if (heal_frequency > 0) {
+	if (heal_frequency >= 0) {
 		config->heal_interval_seconds = heal_frequency * 60;
 	}
 }
@@ -276,7 +281,8 @@ deprecated_arg_init_config (Config * config, int argc, char *argv[])
 {
 	if (argc != 3) {
 		error ("Wrong number of arguments specified.");
-		print_argument_error(N_("Wrong number of arguments specified.\n"));
+		print_argument_error (N_
+				      ("Wrong number of arguments specified.\n"));
 		free (config);
 		exit (EXIT_FAILURE);
 	}
@@ -334,7 +340,8 @@ get_config (int argc, char *argv[])
 			// New style args were used, assume error.
 			// We do not support both at once, other than
 			// debug and wait.
-			print_argument_error (N_("Invalid argument specified.\n"));
+			print_argument_error (N_
+					      ("Invalid argument specified.\n"));
 			exit (EXIT_FAILURE);
 		} else {
 			// Old style args are being used.
@@ -355,7 +362,8 @@ parse_cli_args (int *argc, char *argv[])
 	GOptionContext *option_context = get_option_context ();
 	if (!g_option_context_parse (option_context, argc, &argv, &error)) {
 		error ("Invalid option: %s", error->message);
-		print_argument_error (N_("Invalid option: %s\n"), error->message);
+		print_argument_error (N_("Invalid option: %s\n"),
+				      error->message);
 		g_option_context_free (option_context);
 		exit (EXIT_FAILURE);
 	}
@@ -369,17 +377,31 @@ parse_cli_args (int *argc, char *argv[])
 	for (i = 1; i < *argc; i++) {
 		if (argv[i][0] == '-') {
 			error ("Invalid argument specified: %s\n", argv[i]);
-			print_argument_error (N_("Invalid argument specified: %s\n"),
-				argv[i]);
+			print_argument_error (N_
+					      ("Invalid argument specified: %s\n"),
+					      argv[i]);
 			exit (EXIT_FAILURE);
 		}
 	}
 }
 
+void
+set_up_timers (int initial_delay, int interval, bool heal)
+{
+
+	cert_check_args *args = malloc (sizeof (*args));	//TODO: where to free()?
+	args->heal = heal;
+	g_timeout_add (initial_delay * 1000,
+		       (GSourceFunc) initial_cert_check, (gpointer) args);
+	args->heal = heal;
+	g_timeout_add (interval * 1000,
+		       (GSourceFunc) cert_check, (gpointer) args);
+}
+
 int
 main (int argc, char *argv[])
 {
-	if (signal(SIGTERM, signal_handler) == SIG_ERR) {
+	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
 		warn ("Unable to catch SIGTERM\n");
 	}
 	setlocale (LC_ALL, "");
@@ -402,8 +424,10 @@ main (int argc, char *argv[])
 	}
 
 	info ("Starting rhsmcertd...");
-	info ("Healing interval: %.1f minute(s) [%d second(s)]",
-	      heal_interval_seconds / 60.0, heal_interval_seconds);
+	if (heal_interval_seconds > 0) {
+		info ("Healing interval: %.1f minute(s) [%d second(s)]",
+		      heal_interval_seconds / 60.0, heal_interval_seconds);
+	}
 	info ("Cert check interval: %.1f minute(s) [%d second(s)]",
 	      cert_interval_seconds / 60.0, cert_interval_seconds);
 
@@ -419,21 +443,13 @@ main (int argc, char *argv[])
 		info ("Initial checks will be run now!");
 		initial_delay = 0;
 	} else {
-		info ("Waiting %d second(s) [%.1f minute(s)] before running updates.",
-				initial_delay, initial_delay / 60.0);
+		info ("Waiting %d second(s) [%.1f minute(s)] before running updates.", initial_delay, initial_delay / 60.0);
 	}
 
-	bool heal = true;
-	g_timeout_add (initial_delay * 1000,
-		       (GSourceFunc) initial_cert_check, (gpointer) heal);
-	g_timeout_add (heal_interval_seconds * 1000,
-		       (GSourceFunc) cert_check, (gpointer) heal);
-
-	heal = false;
-	g_timeout_add (initial_delay * 1000,
-		       (GSourceFunc) initial_cert_check, (gpointer) heal);
-	g_timeout_add (cert_interval_seconds * 1000,
-		       (GSourceFunc) cert_check, (gpointer) heal);
+	if (heal_interval_seconds > 0) {
+		set_up_timers (initial_delay, heal_interval_seconds, true);
+	}
+	set_up_timers (initial_delay, cert_interval_seconds, false);
 
 	// NB: we only use cert_interval_seconds when calculating the next update
 	// time. This works for most users, since the cert_interval aligns with
