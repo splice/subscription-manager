@@ -39,6 +39,7 @@
 #define INITIAL_DELAY_SECONDS 1;
 #define DEFAULT_CERT_INTERVAL_SECONDS 14400	/* 4 hours */
 #define DEFAULT_HEAL_INTERVAL_SECONDS 86400	/* 24 hours */
+#define DEFAULT_MAX_SECONDARY_DELAY_SECONDS 0
 #define BUF_MAX 256
 #define RHSM_CONFIG_FILE "/etc/rhsm/rhsm.conf"
 
@@ -49,6 +50,7 @@ static gboolean show_debug = FALSE;
 static gboolean run_now = FALSE;
 static gint arg_cert_interval_minutes = -1;
 static gint arg_heal_interval_minutes = -1;
+static gint arg_max_secondary_delay_seconds = -1;
 
 static GOptionEntry entries[] = {
 	{"cert-interval", 'c', 0, G_OPTION_ARG_INT, &arg_cert_interval_minutes,
@@ -57,6 +59,10 @@ static GOptionEntry entries[] = {
 	{"heal-interval", 'i', 0, G_OPTION_ARG_INT, &arg_heal_interval_minutes,
 	 N_("Interval to run healing (in minutes)"),
 	 "MINUTES"},
+	{"secondary-delay", 's', 0, G_OPTION_ARG_INT,
+	 &arg_max_secondary_delay_seconds,
+	 N_("maximum secondary delay (in seconds)"),
+	 "SECONDS"},
 	{"now", 'n', 0, G_OPTION_ARG_NONE, &run_now,
 	 N_("Run the initial checks immediatly, with no delay."),
 	 NULL},
@@ -68,10 +74,12 @@ static GOptionEntry entries[] = {
 typedef struct _Config {
 	int heal_interval_seconds;
 	int cert_interval_seconds;
+	int max_secondary_delay_seconds;
 } Config;
 
 typedef struct _cert_check_args {
 	bool heal;
+	int secondary_delay;
 } cert_check_args;
 
 const char *
@@ -174,6 +182,13 @@ static gboolean
 cert_check (cert_check_args * args)
 {
 	int status = 0;
+	// NB: this must happen before the fork
+	if (args->secondary_delay > 0) {
+		info ("performing secondary delay of %d seconds",
+		      args->secondary_delay);
+		sleep (args->secondary_delay);
+		args->secondary_delay = 0;	// we only want to do the secondary delay once!
+	}
 
 	int pid = fork ();
 	if (pid < 0) {
@@ -274,6 +289,13 @@ key_file_init_config (Config * config, GKeyFile * key_file)
 	if (heal_frequency >= 0) {
 		config->heal_interval_seconds = heal_frequency * 60;
 	}
+
+	int max_secondary_delay =
+		get_int_from_config_file (key_file, "rhsmcertd",
+					  "maxSecondaryDelay");
+	if (max_secondary_delay >= 0) {
+		config->max_secondary_delay_seconds = max_secondary_delay;
+	}
 }
 
 void
@@ -302,10 +324,16 @@ opt_parse_init_config (Config * config)
 	if (arg_heal_interval_minutes != -1) {
 		config->heal_interval_seconds = arg_heal_interval_minutes * 60;
 	}
+
+	if (arg_max_secondary_delay_seconds != -1) {
+		config->max_secondary_delay_seconds =
+			arg_max_secondary_delay_seconds;
+	}
 	// Let the caller know if opt parser found arg values
 	// for the intervals.
 	return arg_cert_interval_minutes != -1
-		|| arg_heal_interval_minutes != -1;
+		|| arg_heal_interval_minutes != -1
+		|| arg_max_secondary_delay_seconds != -1;
 }
 
 Config *
@@ -317,6 +345,8 @@ get_config (int argc, char *argv[])
 	// Set the default values
 	config->cert_interval_seconds = DEFAULT_CERT_INTERVAL_SECONDS;
 	config->heal_interval_seconds = DEFAULT_HEAL_INTERVAL_SECONDS;
+	config->max_secondary_delay_seconds =
+		DEFAULT_MAX_SECONDARY_DELAY_SECONDS;
 
 	// Load configuration values from the configuration file
 	// which, if defined, will overwrite the current defaults.
@@ -386,16 +416,22 @@ parse_cli_args (int *argc, char *argv[])
 }
 
 void
-set_up_timers (int initial_delay, int interval, bool heal)
+set_up_timers (int initial_delay, int secondary_delay, int interval, bool heal)
 {
+
+	cert_check_args *initial_args = malloc (sizeof (*initial_args));	//TODO: where to free()?
+	initial_args->heal = heal;
+	initial_args->secondary_delay = 0;
 
 	cert_check_args *args = malloc (sizeof (*args));	//TODO: where to free()?
 	args->heal = heal;
+	args->secondary_delay = secondary_delay;
+
 	g_timeout_add (initial_delay * 1000,
-		       (GSourceFunc) initial_cert_check, (gpointer) args);
-	args->heal = heal;
-	g_timeout_add (interval * 1000,
-		       (GSourceFunc) cert_check, (gpointer) args);
+		       (GSourceFunc) initial_cert_check,
+		       (gpointer) initial_args);
+	g_timeout_add (interval * 1000, (GSourceFunc) cert_check,
+		       (gpointer) args);
 }
 
 int
@@ -404,6 +440,7 @@ main (int argc, char *argv[])
 	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
 		warn ("Unable to catch SIGTERM\n");
 	}
+	srand (time (NULL));
 	setlocale (LC_ALL, "");
 	bindtextdomain ("rhsm", "/usr/share/locale");
 	textdomain ("rhsm");
@@ -415,7 +452,10 @@ main (int argc, char *argv[])
 	// up its resources more reliably in case of error.
 	int cert_interval_seconds = config->cert_interval_seconds;
 	int heal_interval_seconds = config->heal_interval_seconds;
+	int max_secondary_delay_seconds = config->max_secondary_delay_seconds;
 	free (config);
+
+	int secondary_delay_seconds;
 
 	daemon (0, 0);
 	if (get_lock () != 0) {
@@ -431,6 +471,10 @@ main (int argc, char *argv[])
 	info ("Cert check interval: %.1f minute(s) [%d second(s)]",
 	      cert_interval_seconds / 60.0, cert_interval_seconds);
 
+	if (max_secondary_delay_seconds > 0) {
+		secondary_delay_seconds = rand () % max_secondary_delay_seconds;
+		info ("secondary delay: %.1f minute(s) [%d second(s)], out of %d seconds maximum", secondary_delay_seconds / 60.0, secondary_delay_seconds, max_secondary_delay_seconds);
+	}
 	// note that we call the function directly first, before assigning a timer
 	// to it. Otherwise, it would only get executed when the timer went off, and
 	// not at startup.
@@ -447,9 +491,10 @@ main (int argc, char *argv[])
 	}
 
 	if (heal_interval_seconds > 0) {
-		set_up_timers (initial_delay, heal_interval_seconds, true);
+		set_up_timers (initial_delay, 0, heal_interval_seconds, true);
 	}
-	set_up_timers (initial_delay, cert_interval_seconds, false);
+	set_up_timers (initial_delay, secondary_delay_seconds,
+		       cert_interval_seconds, false);
 
 	// NB: we only use cert_interval_seconds when calculating the next update
 	// time. This works for most users, since the cert_interval aligns with
