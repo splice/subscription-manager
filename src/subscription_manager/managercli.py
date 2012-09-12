@@ -1758,6 +1758,9 @@ class ListCommand(CliCommand):
                           prod_dir=self.product_dir)
 
     def _validate_options(self):
+        if (self.options.available and RhicDirectory().getRhic()):
+            print _("Error: --available is not applicable when using a RHIC. Please consult the RHIC generation application to view and alter available products for this RHIC.")
+            sys.exit(-1)
         if (self.options.all and not self.options.available):
             print _("Error: --all is only applicable with --available")
             sys.exit(-1)

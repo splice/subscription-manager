@@ -437,6 +437,7 @@ set_up_timers (int initial_delay, int secondary_delay, int interval, bool heal)
 int
 main (int argc, char *argv[])
 {
+	// glib >= 2.30 handles this in a more elegant way
 	if (signal (SIGTERM, signal_handler) == SIG_ERR) {
 		warn ("Unable to catch SIGTERM\n");
 	}
