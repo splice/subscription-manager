@@ -23,7 +23,7 @@ from stubs import StubCertificateDirectory, StubProductCertificate, \
         StubProduct, StubEntitlementCertificate
 from subscription_manager.managerlib import merge_pools, PoolFilter, \
         getInstalledProductStatus, LocalTz, parseDate, \
-        MergedPoolsStackingGroupSorter, MergedPools
+        MergedPoolsStackingGroupSorter, MergedPools, getRhicMachineId
 from modelhelpers import create_pool
 from subscription_manager import managerlib
 import rhsm
@@ -906,3 +906,17 @@ class MergedPoolsTests(unittest.TestCase):
                 "true")
         self.assertFalse('virt_only' in merged_pools.pools[2]['attributes'])
         self.assertFalse('virt_only' in merged_pools.pools[3]['attributes'])
+
+class TestRhicIdentifierGen(unittest.TestCase):
+
+    physical_facts = {'system.uuid': 'FOOphysical', 'net.interface.eth0.mac_address': 'hw:ad:d:re:ss'}
+    virt_facts = {'virt.uuid': 'FOOvirt', 'net.interface.eth0.mac_address': 'hw:ad:d:re:ss'}
+    only_mac_facts = {'net.interface.eth0.mac_address': 'hw:ad:d:re:ss'}
+    only_uuid_facts = {'virt.uuid': 'FOO'}
+
+    def test_rhic_id_gen(self):
+        self.assertTrue(getRhicMachineId(self.physical_facts), 'FOOphyiscal-hw:ad:d:re:ss')
+        self.assertTrue(getRhicMachineId(self.virt_facts), 'FOOvirt-hw:ad:d:re:ss')
+        self.assertTrue(getRhicMachineId(self.only_mac_facts), '-hw:ad:d:re:ss')
+        self.assertTrue(getRhicMachineId(self.only_uuid_facts), 'FOO')
+        self.assertRaises(Exception, getRhicMachineId, {})
