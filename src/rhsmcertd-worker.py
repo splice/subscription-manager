@@ -42,6 +42,7 @@ def main(options, log):
         product_dir = ProductDirectory()
         facts = Facts(ent_dir=entitlement_dir,
                               prod_dir=product_dir)
+        facts_dict = facts.to_dict()
         iproducts = managerlib.getInstalledProductStatus(product_dir,
                 entitlement_dir, facts.get_facts())
         product_certs = []
@@ -50,10 +51,16 @@ def main(options, log):
             product_certs.append(product[1])
 
         rhic = certificate.create_from_file(RhicDirectory().getRhic())
-        mac = facts.to_dict()['net.interface.eth0.mac_address']
+
+        try:
+            identifier = managerlib.getRhicMachineId(facts_dict)
+            log.info("machine identifier is %s" % identifier)
+        except:
+            log.error("unable to determine machine identifier, aborting")
+            sys.exit(-1)
 
         # grab the certs from RCS
-        certs = splice_conn.getCerts(rhic, mac, installed_products=product_certs, facts=facts)
+        certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts=facts)
 
         try:
             writer = Writer()

@@ -750,6 +750,27 @@ def parseDate(date):
     dt = datetime.datetime.fromtimestamp(posix_time, tz=server_tz)
     return dt
 
+def getRhicMachineId(facts_dict):
+    # build up an identifier
+    identifier = ""
+    if 'system.uuid' in facts_dict:
+        identifier = facts_dict['system.uuid']
+    elif 'virt.uuid' in facts_dict:
+        identifier = facts_dict['virt.uuid']
+    else:
+        log.warn("No system identfier found, relying on eth0 hw address")
+
+    if 'net.interface.eth0.mac_address' in facts_dict:
+        identifier += '-' + facts_dict['net.interface.eth0.mac_address']
+    else:
+        log.warn("No hw address found for eth0")
+
+    if not identifier:
+        raise Exception("Unable to create machine identifier")
+
+    return identifier
+
+
 
 def formatDate(dt):
     if dt:
