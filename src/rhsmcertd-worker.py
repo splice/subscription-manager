@@ -34,6 +34,8 @@ from subscription_manager import cert_sorter
 import gettext
 _ = gettext.gettext
 
+RHIC_RETRY_SECONDS = 5
+
 
 def main(options, log):
     if RhicDirectory().getRhic():
@@ -60,15 +62,24 @@ def main(options, log):
             sys.exit(-1)
 
         # grab the certs from RCS
-        certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts=facts)
-
         try:
-            writer = Writer()
-            cert = certificate.create_from_pem(certs['cert'])
-            key = certificate.Key(certs['key'])
-            writer.write(key, cert)
-        except:
-            raise
+            certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
+        except AcceptedException:
+            log.info("RHIC being processed by upstream server. Retrying in %s seconds" %  RHIC_RETRY_SECONDS)
+            sleep(RHIC_RETRY_SECONDS)
+            try:
+                certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
+            except AcceptedException:
+                log.info("Unable to retrieve certificates at this time.")
+
+        if certs:
+            try:
+                writer = Writer()
+                cert = certificate.create_from_pem(certs['cert'])
+                key = certificate.Key(certs['key'])
+                writer.write(key, cert)
+            except:
+                raise
 
         # clean up expired certs
         cs = cert_sorter.CertSorter(product_dir, entitlement_dir, facts.to_dict())
