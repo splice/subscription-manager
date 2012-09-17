@@ -38,7 +38,7 @@ import rhsm.config
 import rhsm.connection as connection
 
 from subscription_manager.branding import get_branding
-from subscription_manager.certlib import CertLib, ConsumerIdentity
+from subscription_manager.certlib import CertLib, ConsumerIdentity, RhicCertificate
 from subscription_manager.repolib import RepoLib, RepoFile
 from subscription_manager.certmgr import CertManager
 from subscription_manager.hwprobe import ClassicCheck
@@ -47,7 +47,7 @@ from subscription_manager import managerlib
 from subscription_manager.facts import Facts
 from subscription_manager.quantity import valid_quantity
 from subscription_manager.release import ReleaseBackend
-from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, RhicDirectory
+from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory
 from subscription_manager.cert_sorter import FUTURE_SUBSCRIBED, SUBSCRIBED, \
         NOT_SUBSCRIBED, EXPIRED, PARTIALLY_SUBSCRIBED
 from subscription_manager.utils import remove_scheme, parse_server_info, \
@@ -930,10 +930,11 @@ class RegisterCommand(UserPassCommand):
             retcode = 1
             # ensure new rhic is readable
             if os.access(self.options.rhic, os.R_OK):
-                log.info("removing existing files from %s" % os.path.dirname(RhicDirectory().getRhic()))
-                RhicDirectory().clean()
-                log.info("copying %s into %s" % (self.options.rhic, cfg.get('splice', 'rhic')))
-                shutil.copy(self.options.rhic, cfg.get('splice', 'rhic'))
+                rhic_location = RhicCertificate.certpath()
+                log.info("removing existing rhic at %s" % rhic_location)
+                os.unlink(rhic_location)
+                log.info("copying %s into %s" % (self.options.rhic, rhic_location))
+                shutil.copy(self.options.rhic, rhic_location)
                 print(_("RHIC %s successfully imported") % self.options.rhic)
                 try:
                     retcode = subprocess.call([RHSMCERTD_WORKER])
@@ -1758,7 +1759,7 @@ class ListCommand(CliCommand):
                           prod_dir=self.product_dir)
 
     def _validate_options(self):
-        if (self.options.available and RhicDirectory().getRhic()):
+        if (self.options.available and RhicCertificate.existsAndValid()):
             print _("Error: --available is not applicable when using a RHIC. Please consult the RHIC generation application to view and alter available products for this RHIC.")
             sys.exit(-1)
         if (self.options.all and not self.options.available):

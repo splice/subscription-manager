@@ -25,7 +25,7 @@ from subscription_manager import cert_sorter
 from subscription_manager.certdirectory import EntitlementDirectory, \
     ProductDirectory, Path, Writer
 from rhsm.config import initConfig
-from rhsm.certificate import Key, create_from_pem, GMT
+from rhsm.certificate import Key, create_from_pem, GMT, create_from_file
 
 log = logging.getLogger('rhsm-app.' + __name__)
 
@@ -333,6 +333,37 @@ class UpdateAction(Action):
 
 class Disconnected(Exception):
     pass
+
+
+class RhicCertificate:
+
+    PATH = cfg.get('splice', 'rhic')
+
+    @classmethod
+    def read(cls):
+        f = open(cls.certpath())
+        cert = f.read()
+        f.close()
+        return create_from_file(PATH)
+
+    @classmethod
+    def certpath(cls):
+        return cls.PATH
+
+    @classmethod
+    def existsAndValid(cls):
+        if cls.exists():
+            try:
+                cls.read()
+                return True
+            except Exception, e:
+                log.warn('possible certificate corruption')
+                log.error(e)
+        return False
+
+    @classmethod
+    def exists(cls):
+        return os.path.exists(cls.certpath())
 
 
 class ConsumerIdentity:

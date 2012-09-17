@@ -24,10 +24,10 @@ from rhsm import certificate
 from subscription_manager import certmgr
 from subscription_manager import logutil
 from subscription_manager import managerlib
-from subscription_manager.certlib import ConsumerIdentity
+from subscription_manager.certlib import ConsumerIdentity, RhicCertificate
 from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
-from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, RhicDirectory, Writer
+from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, Writer
 from subscription_manager import cert_sorter
 
 
@@ -38,7 +38,7 @@ RHIC_RETRY_SECONDS = 5
 
 
 def main(options, log):
-    if RhicDirectory().getRhic():
+    if RhicCertificate.existsAndValid():
         splice_conn = connection.SpliceConnection()
         entitlement_dir = EntitlementDirectory()
         product_dir = ProductDirectory()
@@ -52,7 +52,7 @@ def main(options, log):
         for product in iproducts:
             product_certs.append(product[1])
 
-        rhic = certificate.create_from_file(RhicDirectory().getRhic())
+        rhic = RhicCertificate.read()
 
         try:
             identifier = managerlib.getRhicMachineId(facts_dict)
