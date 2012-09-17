@@ -184,6 +184,7 @@ rm -rf %{buildroot}
 %{_datadir}/rhsm/subscription_manager/cli.py*
 %{_datadir}/rhsm/subscription_manager/managercli.py*
 %{_datadir}/rhsm/subscription_manager/managerlib.py*
+%{_datadir}/rhsm/subscription_manager/rhiclib.py*
 %{_datadir}/rhsm/subscription_manager/async.py*
 %{_datadir}/rhsm/subscription_manager/logutil.py*
 %{_datadir}/rhsm/subscription_manager/repolib.py*

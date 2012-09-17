@@ -25,6 +25,7 @@ from rhsm import certificate
 from subscription_manager import certmgr
 from subscription_manager import logutil
 from subscription_manager import managerlib
+from subscription_manager import rhiclib
 from subscription_manager.certlib import ConsumerIdentity, RhicCertificate
 from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
@@ -39,38 +40,27 @@ RHIC_RETRY_SECONDS = 5
 
 
 def main(options, log):
-    if RhicCertificate.existsAndValid():
-        splice_conn = connection.SpliceConnection()
-        entitlement_dir = EntitlementDirectory()
-        product_dir = ProductDirectory()
-        facts = Facts(ent_dir=entitlement_dir,
-                              prod_dir=product_dir)
-        facts_dict = facts.to_dict()
-        iproducts = managerlib.getInstalledProductStatus(product_dir,
-                entitlement_dir, facts.get_facts())
-        product_certs = []
 
+
+
+    if RhicCertificate.existsAndValid():
+        facts = Facts(ent_dir=EntitlementDirectory(),
+                              prod_dir=ProductDirectory())
+        iproducts = managerlib.getInstalledProductStatus(ProductDirectory(),
+                EntitlementDirectory(), facts.get_facts())
+
+        product_certs = []
         for product in iproducts:
             product_certs.append(product[1])
 
-        rhic = RhicCertificate.read()
-
+        certs = []
         try:
-            identifier = managerlib.getRhicMachineId(facts_dict)
-            log.info("machine identifier is %s" % identifier)
-        except:
-            log.error("unable to determine machine identifier, aborting")
-            sys.exit(-1)
-
-        # grab the certs from RCS
-        certs = None
-        try:
-            certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
+            certs = rhiclib.getCerts(facts.to_dict(), product_certs)
         except connection.AcceptedException:
             log.info("RHIC being processed by upstream server. Retrying in %s seconds" %  RHIC_RETRY_SECONDS)
             time.sleep(RHIC_RETRY_SECONDS)
             try:
-                certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
+                certs = rhiclib.getCerts(facts.to_dict(), product_certs)
             except connection.AcceptedException:
                 log.info("Unable to retrieve certificates at this time.")
 
@@ -83,13 +73,7 @@ def main(options, log):
             except:
                 raise
 
-        # clean up expired certs
-        cs = cert_sorter.CertSorter(product_dir, entitlement_dir, facts.to_dict())
-        log.info("deleting %s expired certs" % len(cs.expired_entitlement_certs))
-
-        for cert in cs.expired_entitlement_certs:
-            log.info("deleting expired cert %s" % cert.serial)
-            cert.delete()
+        rhiclib.cleanExpiredCerts(ProductDirectory(), EntitlementDirectory(), facts.to_dict())
 
         sys.exit(0)
 
