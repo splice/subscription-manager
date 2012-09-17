@@ -344,7 +344,7 @@ class RhicCertificate:
         f = open(cls.certpath())
         cert = f.read()
         f.close()
-        return create_from_file(PATH)
+        return create_from_file(cls.PATH)
 
     @classmethod
     def certpath(cls):
