@@ -751,7 +751,10 @@ def parseDate(date):
     return dt
 
 def getRhicMachineId(facts_dict):
-    # build up an identifier
+    # this identifier is only used by the RCS. It is needed in the event that a
+    # machine checks in more than once within an hour, so we do not
+    # inadventently report overconsumption.
+
     identifier = ""
     if 'system.uuid' in facts_dict:
         identifier = facts_dict['system.uuid']

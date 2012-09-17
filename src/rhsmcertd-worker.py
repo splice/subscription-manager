@@ -18,6 +18,7 @@ import sys
 sys.path.append("/usr/share/rhsm")
 
 import logging
+import time
 
 from rhsm import connection
 from rhsm import certificate
@@ -62,14 +63,15 @@ def main(options, log):
             sys.exit(-1)
 
         # grab the certs from RCS
+        certs = None
         try:
             certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
-        except AcceptedException:
+        except connection.AcceptedException:
             log.info("RHIC being processed by upstream server. Retrying in %s seconds" %  RHIC_RETRY_SECONDS)
-            sleep(RHIC_RETRY_SECONDS)
+            time.sleep(RHIC_RETRY_SECONDS)
             try:
                 certs = splice_conn.getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts.to_dict())
-            except AcceptedException:
+            except connection.AcceptedException:
                 log.info("Unable to retrieve certificates at this time.")
 
         if certs:
