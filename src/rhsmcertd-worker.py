@@ -30,7 +30,6 @@ from subscription_manager.certlib import ConsumerIdentity, RhicCertificate
 from subscription_manager.i18n_optparse import OptionParser
 from subscription_manager.facts import Facts
 from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, Writer
-from subscription_manager import cert_sorter
 
 
 import gettext

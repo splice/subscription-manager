@@ -82,13 +82,3 @@ class RhicCertificateTests(unittest.TestCase):
         testRhicCert = RhicCertificate()
         testRhicCert.cfg = StubConfig()
         self.assertTrue(testRhicCert.existsAndValid())
-
-    @mock.patch.object(RhicCertificate, 'exists')
-    @mock.patch.object(certificate, 'create_from_file')
-    def test_read_bad_cert(self, mock_exists, mock_read):
-        testRhicCert = RhicCertificate()
-        mock_exists.return_value = True
-        # assume something bad happened while reading the cert
-        mock_read = mock.Mock(side_effect=Exception('exception!'))
-        self.assertFalse(testRhicCert.existsAndValid())
-

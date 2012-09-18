@@ -14,21 +14,14 @@
 # granted to use or replicate Red Hat trademarks that are incorporated
 # in this software or its documentation.
 #
-import os
 import logging
 
 log = logging.getLogger('rhsm-app.' + __name__)
 
 from rhsm.connection import SpliceConnection
-from rhsm import certificate
-from subscription_manager import certmgr
-from subscription_manager import logutil
 from subscription_manager import managerlib
-from subscription_manager.certlib import ConsumerIdentity, RhicCertificate
-from subscription_manager.i18n_optparse import OptionParser
-from subscription_manager.facts import Facts
-from subscription_manager.certdirectory import EntitlementDirectory, ProductDirectory, Writer
 from subscription_manager import cert_sorter
+from subscription_manager.certlib import RhicCertificate
 
 
 import gettext
