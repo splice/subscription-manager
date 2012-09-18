@@ -37,6 +37,7 @@ def cleanExpiredCerts(product_dir, entitlement_dir, facts_dict):
         log.info("deleting expired cert %s" % cert.serial)
         cert.delete()
 
+
 def getCerts(facts_dict, product_certs):
 
     rhic = RhicCertificate.read()

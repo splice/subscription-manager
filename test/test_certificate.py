@@ -72,6 +72,7 @@ class EntitlementCertificateTests(unittest.TestCase):
 
         self.assertFalse(cert.is_valid())
 
+
 class RhicCertificateTests(unittest.TestCase):
 
     @mock.patch.object(RhicCertificate, 'exists')

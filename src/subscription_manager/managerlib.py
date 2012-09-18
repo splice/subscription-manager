@@ -750,6 +750,7 @@ def parseDate(date):
     dt = datetime.datetime.fromtimestamp(posix_time, tz=server_tz)
     return dt
 
+
 def getRhicMachineId(facts_dict):
     # this identifier is only used by the RCS. It is needed in the event that a
     # machine checks in more than once within an hour, so we do not
@@ -772,7 +773,6 @@ def getRhicMachineId(facts_dict):
         raise Exception("Unable to create machine identifier")
 
     return identifier
-
 
 
 def formatDate(dt):

@@ -40,8 +40,6 @@ RHIC_RETRY_SECONDS = 5
 
 def main(options, log):
 
-
-
     if RhicCertificate.existsAndValid():
         facts = Facts(ent_dir=EntitlementDirectory(),
                               prod_dir=ProductDirectory())
@@ -56,7 +54,7 @@ def main(options, log):
         try:
             certs = rhiclib.getCerts(facts.to_dict(), product_certs)
         except connection.AcceptedException:
-            log.info("RHIC being processed by upstream server. Retrying in %s seconds" %  RHIC_RETRY_SECONDS)
+            log.info("RHIC being processed by upstream server. Retrying in %s seconds" % RHIC_RETRY_SECONDS)
             time.sleep(RHIC_RETRY_SECONDS)
             try:
                 certs = rhiclib.getCerts(facts.to_dict(), product_certs)

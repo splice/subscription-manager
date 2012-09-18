@@ -907,6 +907,7 @@ class MergedPoolsTests(unittest.TestCase):
         self.assertFalse('virt_only' in merged_pools.pools[2]['attributes'])
         self.assertFalse('virt_only' in merged_pools.pools[3]['attributes'])
 
+
 class TestRhicIdentifierGen(unittest.TestCase):
 
     physical_facts = {'system.uuid': 'FOOphysical', 'net.interface.eth0.mac_address': 'hw:ad:d:re:ss'}
