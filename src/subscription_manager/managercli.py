@@ -930,9 +930,10 @@ class RegisterCommand(UserPassCommand):
             retcode = 1
             # ensure new rhic is readable
             if os.access(self.options.rhic, os.R_OK):
+                if RhicCertificate.exists():
+                    log.info("removing existing rhic at %s" % rhic_location)
+                    os.unlink(rhic_location)
                 rhic_location = RhicCertificate.certpath()
-                log.info("removing existing rhic at %s" % rhic_location)
-                os.unlink(rhic_location)
                 log.info("copying %s into %s" % (self.options.rhic, rhic_location))
                 shutil.copy(self.options.rhic, rhic_location)
                 print(_("RHIC %s successfully imported") % self.options.rhic)
