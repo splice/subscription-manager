@@ -15,10 +15,11 @@
 # in this software or its documentation.
 #
 import logging
+import time
 
 log = logging.getLogger('rhsm-app.' + __name__)
 
-from rhsm.connection import SpliceConnection
+from rhsm.connection import SpliceConnection, RemoteServerException, AcceptedException, NetworkException
 from subscription_manager import managerlib
 from subscription_manager import cert_sorter
 from subscription_manager.certlib import RhicCertificate
@@ -27,6 +28,8 @@ from subscription_manager.certlib import RhicCertificate
 import gettext
 _ = gettext.gettext
 
+LOOKUP_RETRY_DELAY = 5
+LOOKUP_MAX_ATTEMPTS = 2
 
 def cleanExpiredCerts(product_dir, entitlement_dir, facts_dict):
     # clean up expired certs
@@ -49,5 +52,16 @@ def getCerts(facts_dict, product_certs):
         log.error("unable to determine machine identifier, aborting")
         raise
 
+    results = None
+
     # grab the certs from RCS
-    return SpliceConnection().getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts_dict)
+    for i in range(LOOKUP_MAX_ATTEMPTS):
+        try:
+            results = SpliceConnection().getCerts(rhic, identifier, installed_products=product_certs, facts_dict=facts_dict)
+        except AcceptedException:
+            log.info("got a 202, retrying after pause of %s seconds" % LOOKUP_RETRY_DELAY)
+            time.sleep(LOOKUP_RETRY_DELAY)
+        else:
+            break
+
+    return results

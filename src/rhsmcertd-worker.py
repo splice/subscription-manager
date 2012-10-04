@@ -35,8 +35,6 @@ from subscription_manager.certdirectory import EntitlementDirectory, ProductDire
 import gettext
 _ = gettext.gettext
 
-RHIC_RETRY_SECONDS = 5
-
 
 def main(options, log):
 
@@ -53,13 +51,20 @@ def main(options, log):
         certs = []
         try:
             certs = rhiclib.getCerts(facts.to_dict(), product_certs)
-        except connection.AcceptedException:
-            log.info("RHIC being processed by upstream server. Retrying in %s seconds" % RHIC_RETRY_SECONDS)
-            time.sleep(RHIC_RETRY_SECONDS)
-            try:
-                certs = rhiclib.getCerts(facts.to_dict(), product_certs)
-            except connection.AcceptedException:
-                log.info("Unable to retrieve certificates at this time.")
+        except connection.NetworkException, e:
+            if e.code == 410:
+                print _("RHIC was deleted by upstream server. See rhsm.log for more detail.")
+                RhicCertificate.move()
+                sys.exit(-1)
+            else:
+                raise
+        except connection.RemoteServerException, e:
+            if e.code == 404:
+                print _("RHIC was not found by upstream server. See rhsm.log for more detail.")
+                RhicCertificate.move()
+                sys.exit(-1)
+            else:
+                raise
 
         if certs:
             try:

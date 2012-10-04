@@ -348,6 +348,12 @@ class RhicCertificate:
         return cls.PATH
 
     @classmethod
+    def move(cls):
+        # this will silently overwrite an existing .old file!
+        log.warn("moving %s to %s" % (cls.PATH, cls.PATH + '.old'))
+        os.rename(cls.PATH, cls.PATH + '.old')
+
+    @classmethod
     def existsAndValid(cls):
         if cls.exists():
             try:
