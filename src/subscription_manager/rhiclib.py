@@ -19,7 +19,7 @@ import time
 
 log = logging.getLogger('rhsm-app.' + __name__)
 
-from rhsm.connection import SpliceConnection, RemoteServerException, AcceptedException, NetworkException
+from rhsm.connection import SpliceConnection, AcceptedException
 from subscription_manager import managerlib
 from subscription_manager import cert_sorter
 from subscription_manager.certlib import RhicCertificate

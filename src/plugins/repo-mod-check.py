@@ -14,7 +14,6 @@
 #
 
 import os
-import time
 from yum.plugins import TYPE_CORE, PluginYumExit
 
 requires_api_version = '2.6'
@@ -27,15 +26,6 @@ YUM_REPO_DIR = '/etc/yum.repos.d/'
 ERR_MSG = """
 Download errors have been detected, and one or more repo files have changed since start of download. Please re-run yum in order to finish downloads and complete transaction.
 """
-
-def chroot():
-    """
-    Use /mnt/sysimage when it exists to support operating
-    within an Anaconda installation.
-    """
-    sysimage = '/mnt/sysimage'
-    if os.path.exists(sysimage):
-        Path.ROOT = sysimage
 
 def predownload_hook(conduit):
     """

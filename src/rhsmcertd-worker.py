@@ -18,7 +18,6 @@ import sys
 sys.path.append("/usr/share/rhsm")
 
 import logging
-import time
 
 from rhsm import connection
 from rhsm import certificate

@@ -13,11 +13,8 @@
 # in this software or its documentation.
 #
 
-import os
 import sys
-import time
-import pprint
-from yum.plugins import TYPE_CORE, PluginYumExit
+from yum.plugins import TYPE_CORE
 sys.path.append("/usr/share/rhsm")
 from subscription_manager.productid import ProductDatabase
 from subscription_manager.certdirectory import ProductDirectory
@@ -28,15 +25,6 @@ plugin_type = (TYPE_CORE,)
 repofiles = {}
 
 YUM_REPO_DIR = '/etc/yum.repos.d/'
-
-def chroot():
-    """
-    Use /mnt/sysimage when it exists to support operating
-    within an Anaconda installation.
-    """
-    sysimage = '/mnt/sysimage'
-    if os.path.exists(sysimage):
-        Path.ROOT = sysimage
 
 class EraseProductCommand:
 
@@ -66,10 +54,9 @@ class EraseProductCommand:
         # convert IDs to names in the mapping
         product_repo_mapping = dict((product[k],v) for k, v in product_db.content.iteritems())
 
-        pkg_list = []
         for ipkg in sorted(pkgs):
             if 'from_repo' in ipkg.yumdb_info and ipkg.yumdb_info.from_repo == product_repo_mapping.get(opts.product_name):
-                # add the package to the erasure queue
+                # add the package to the erasure transaction
                 base.remove(ipkg)
 
         if len(base.tsInfo) == 0:
